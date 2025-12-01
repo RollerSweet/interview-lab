@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: parallel-job
+  namespace: rbac-lab
+spec:
+  completions: 10
+  parallelism: 3
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: worker
+        image: busybox:1.37
+        command:
+          - sh
+          - -c
+          - |
+            echo "Worker $(hostname) processing task..."
+            sleep $((RANDOM % 3 + 1))
+            echo "Done."

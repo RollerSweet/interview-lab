@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: process-script
+  namespace: rbac-lab
+data:
+  process.sh: |
+    #!/bin/sh
+    echo "Starting processing job..."
+    for item in roland yamaha casio; do
+      echo "Processing item: $item"
+      sleep 1
+    done
+    echo "Processing completed successfully!"

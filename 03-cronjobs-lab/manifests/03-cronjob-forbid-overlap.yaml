@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-forbid-overlap
+  namespace: rbac-lab
+spec:
+  schedule: "*/2 * * * *"  # Every two minutes
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 60
+  suspend: false
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: reporter
+            image: busybox:1.37
+            command:
+            - sh
+            - -c
+            - |
+              echo "Starting long-running cron task"
+              sleep 90
+              echo "Completed run"

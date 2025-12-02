@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-run-script
+  namespace: rbac-lab
+spec:
+  schedule: "*/5 * * * *"  # Every five minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: reporter
+            image: busybox:1.37
+            command: ["/bin/sh", "/scripts/report.sh"]
+            env:
+            - name: REPORT_TARGET
+              value: "stdout"
+            volumeMounts:
+            - name: script-volume
+              mountPath: /scripts
+          volumes:
+          - name: script-volume
+            configMap:
+              name: cron-report-script
+              defaultMode: 0755

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cron-report-script
+  namespace: rbac-lab
+data:
+  report.sh: |
+    #!/bin/sh
+    TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S%z")
+    echo "[$TIMESTAMP] Starting scheduled report"
+    HOSTNAME=$(hostname)
+    echo "Running on node: $HOSTNAME"
+    if [ -n "$REPORT_TARGET" ]; then
+      echo "Sending report to $REPORT_TARGET"
+    else
+      echo "REPORT_TARGET not set; writing to stdout"
+    fi
+    sleep 3
+    echo "Report complete"

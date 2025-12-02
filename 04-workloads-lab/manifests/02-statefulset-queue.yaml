@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: queue-broker
+  namespace: rbac-lab
+  labels:
+    app: queue-lab
+spec:
+  clusterIP: None
+  selector:
+    app: queue-lab
+    role: broker
+  ports:
+  - name: client
+    port: 4222
+    targetPort: 4222
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: queue-broker
+  namespace: rbac-lab
+spec:
+  serviceName: queue-broker
+  replicas: 3
+  selector:
+    matchLabels:
+      app: queue-lab
+      role: broker
+  template:
+    metadata:
+      labels:
+        app: queue-lab
+        role: broker
+    spec:
+      containers:
+      - name: nats
+        image: nats:2.10-alpine
+        ports:
+        - containerPort: 4222
+          name: client
+        volumeMounts:
+        - name: data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 1Gi

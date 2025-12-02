@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-log-agent
+  namespace: rbac-lab
+  labels:
+    app: node-observer
+spec:
+  selector:
+    matchLabels:
+      app: node-observer
+  template:
+    metadata:
+      labels:
+        app: node-observer
+    spec:
+      tolerations:
+      - operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: log-agent
+        image: busybox:1.37
+        command:
+        - sh
+        - -c
+        - |
+          echo "Collecting logs on $(hostname)"
+          tail -n+1 -f /var/log/messages || tail -f /var/log/syslog
+        resources:
+          limits:
+            cpu: 50m
+            memory: 64Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+          readOnly: true
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+          type: DirectoryOrCreate

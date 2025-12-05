@@ -1,0 +1,80 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-db
+spec:
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - image: postgres:16
+            name: backup-db
+            command: ["sh", "-c", "pg_dump -U $PG_USER -h $PG_HOST -p $PG_PORT -Fc $PG_DATABASE > /backup/backup.sql"]
+            env:
+            - name: PG_USER
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: username
+            - name: PG_HOST
+              value: "test.default.cluster.local"
+            - name: PG_PORT
+              value: "5432"
+            - name: PG_DATABASE
+              value: "blog"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-credentials
+                  key: password
+            resources:
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+            volumeMounts:
+            - name: backup-volume
+              mountPath: /backup
+          restartPolicy: OnFailure
+          volumes:
+          - name: backup-volume
+            persistentVolumeClaim:
+              claimName: backup-volume
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+data:
+  username: admin
+  password: pass
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: backup-volume
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: backup-test-pod
+spec:
+  containers:
+    - name: test
+      image: busybox
+      command: ["sh", "-c", "sleep infinity"]
+      volumeMounts:
+        - name: backup-volume
+          mountPath: /backup
+  volumes:
+    - name: backup-volume
+      persistentVolumeClaim:
+        claimName: backup-volume

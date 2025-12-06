@@ -1,0 +1,117 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: interview-app
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: web-app
+  name: web-app
+  namespace: interview-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - image: nginx:1.27
+        name: nginx
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 5
+          failureThreshold: 3
+        env:
+        - name: ENV_FILE_PATH
+          value: "/config/app.env"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: web-app-credentials
+              key: DB_PASSWORD
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config/app.env
+          subPath: app.env
+        resources:
+          requests:
+            memory: 128Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+            cpu: 100m
+      volumes:
+      - name: config-volume
+        configMap:
+          name: web-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: web-app
+  name: web-app
+  namespace: interview-app
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: web-app
+  type: ClusterIP
+---
+apiVersion: v1
+data:
+  app.env: |
+    APP_ENV="production"
+    APP_MESSAGE="Hello from K8s interview lab"
+kind: ConfigMap
+metadata:
+  name: web-app
+  namespace: interview-app
+---
+apiVersion: v1
+data:
+  DB_PASSWORD: dGVzdHRlc3Q=
+kind: Secret
+metadata:
+  name: web-app-credentials
+  namespace: interview-app
+type: Opaque
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-app
+  namespace: interview-app
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: app.interview.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-app
+            port:
+              number: 80

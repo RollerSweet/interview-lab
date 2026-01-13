@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbit:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+    ports:
+      - "5672:5672"    # AMQP
+      - "15672:15672"  # UI
+    healthcheck:
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./api
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-app}
+      DB_USER: ${POSTGRES_USER:-app}
+      DB_PASS: ${POSTGRES_PASSWORD:-app}
+
+      RABBIT_HOST: rabbit
+      RABBIT_PORT: "5672"
+      RABBIT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBIT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RABBIT_QUEUE: tasks
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+
+  worker:
+    build: ./worker
+    deploy:
+      replicas: 3
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-app}
+      DB_USER: ${POSTGRES_USER:-app}
+      DB_PASS: ${POSTGRES_PASSWORD:-app}
+
+      RABBIT_HOST: rabbit
+      RABBIT_PORT: "5672"
+      RABBIT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+      RABBIT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+      RABBIT_QUEUE: tasks
+      WORKER_PREFETCH: "10"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+
+volumes:
+  pgdata:

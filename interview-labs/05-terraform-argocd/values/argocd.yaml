@@ -1,0 +1,40 @@
+global:
+  domain: local
+
+configs:
+  params:
+    server.insecure: true
+  rbac:
+    policy.default: role:admin
+server:
+  replicas: 1
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.local
+    hosts:
+      - argocd.local
+    tls: false
+  extraArgs:
+    - --insecure
+
+repoServer:
+  replicas: 1
+
+controller:
+  replicas: 1
+
+applicationSet:
+  enabled: true
+  replicas: 1
+
+notifications:
+  enabled: false
+
+dex:
+  enabled: false
+
+redis:
+  enabled: true
